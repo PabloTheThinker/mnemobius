@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import math
 import os
-import re
 
 from .crystallize import effective, posterior
 from .redact import is_sensitive, load_blocklist

@@ -47,7 +47,7 @@ def ingest_hermes(conn, db_path=None, *, sources=None, since_days=None, limit=No
         rows = src.execute(
             f"""SELECT s.id, s.source, s.title, s.started_at, s.ended_at, m.mx
                 FROM sessions s JOIN (SELECT session_id, MAX(id) mx, COUNT(*) n FROM messages GROUP BY session_id) m
-                ON m.session_id = s.id WHERE {' AND '.join(where)} AND m.n >= 3 ORDER BY s.started_at""",
+                ON m.session_id = s.id WHERE {' AND '.join(where)} AND m.n >= 3 ORDER BY s.started_at""",  # noqa: S608 (where-fragments are constants; every value is bound)
             params,
         ).fetchall()
         todo = [r for r in rows if r["mx"] > have.get(r["id"], 0)]

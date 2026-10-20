@@ -21,7 +21,7 @@ def forge(conn, task: str) -> dict:
     qt = set(tokens(task))
     res = recall(conn, task, k=8)
     ids = [p["id"] for p in res["picks"]]
-    by_id = {r["id"]: r for r in conn.execute("SELECT * FROM concepts WHERE id IN (%s)" % ",".join("?" * len(ids)), ids)} if ids else {}
+    by_id = {r["id"]: r for r in conn.execute("SELECT * FROM concepts WHERE id IN (%s)" % ",".join("?" * len(ids)), ids)} if ids else {}  # noqa: S608 (only ? placeholders are interpolated)
     plan: dict[str, Any] = dict(task=task, precedent=None, first_moves=[], watch=[], borrow=[], verify="", confidence="low")
     arche = [by_id[p["id"]] for p in res["picks"] if p["kind"] == "archetype" and p["id"] in by_id]
     if arche:

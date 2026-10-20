@@ -303,3 +303,25 @@ def test_unknown_first_words_and_hex_blobs_are_hashed_in_digests():
     assert distill.arg_digest("terminal", {"command": "01c79a2385f47ef46ea93622db49ce3bd0595ab16a1fba13 x"}).startswith("cmd #")
     assert distill.arg_digest("terminal", {"command": "cd /x && git status"}) == "git status"
     assert distill.arg_digest("terminal", {"command": "ls -la"}) == "ls"
+
+
+def test_redaction_is_linear_time_on_hostile_input():
+    """Regression: the secret/PII patterns used to backtrack quadratically (300 KB took minutes)."""
+    import time
+    from mnemobius.redact import has_secret, redact
+    nasty = ["a" * 300_000, "a" * 300_000 + "g", "ab" * 150_000 + "!", "x@" * 100_000, "token" + " " * 300_000,
+             "a." * 150_000, "+1" * 100_000, "1" * 300_000, "/home/" + "u" * 300_000, "A1b" * 100_000]
+    for s in nasty:
+        t = time.perf_counter()
+        redact(s)
+        has_secret(s)
+        assert time.perf_counter() - t < 2.0, f"slow on {s[:12]!r}...{len(s)}"
+
+
+def test_long_token_detection_survives_the_rewrite():
+    from mnemobius.redact import has_secret, redact
+    key = "Zx9" + "aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5bC7dE9fG1hJ3"  # 48+ chars, digits + upper + lower
+    assert has_secret(key) and "<secret>" in redact("k " + key)
+    assert not has_secret("a-very-long-descriptive-file-name-for-a-skill-reference-document-v2.md")
+    assert has_secret("deadbeef" * 6) and not has_secret("deadbeef" * 6 + "g")
+    assert has_secret("x " * 5 + "A" * 9 + " " + "k" * 20000 + " sk-" + "q" * 30)  # found past a window boundary

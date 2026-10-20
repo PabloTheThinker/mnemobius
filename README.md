@@ -75,6 +75,10 @@ Design notes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Honest limits: [docs
 
 v0.1. Deterministic, no model calls, no network, standard library only. 55 tests, run on Python 3.10 and 3.12. Developed against a real Hermes `state.db` of several hundred sessions. Early software: read [docs/LIMITS.md](docs/LIMITS.md) before relying on it.
 
+## Security
+
+Report vulnerabilities privately, see [SECURITY.md](SECURITY.md). `main` is protected: changes land only through pull requests with passing CI (Python 3.10-3.13, lint, CodeQL), and a hygiene test fails the build if a secret, a personal identifier or an unpinned GitHub Action is ever committed. Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT

@@ -19,11 +19,28 @@ _SECRET_PATTERNS = [
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)",
     r"(?i)\bbearer\s+[A-Za-z0-9._\-]{16,}",
     r"(?i)\b(?:api[_-]?key|secret|token|passw(?:or)?d|authorization)\b\s*[:=]\s*[\"']?[^\s\"',;]{6,}",
-    r"\b[A-Fa-f0-9]{40,}\b",
-    r"(?=[A-Za-z0-9+/_\-]*\d)(?=[A-Za-z0-9+/_\-]*[A-Z])(?=[A-Za-z0-9+/_\-]*[a-z])\b[A-Za-z0-9+/_\-]{48,}={0,2}\b",
+    # Every pattern below that can match a long run starts only at the *beginning* of the run (lookbehind). Without that,
+    # a regex retries from each position inside one long run and runs in quadratic time (ReDoS on hostile or junk input).
+    r"(?<![A-Za-z0-9_])[A-Fa-f0-9]{40,}(?![A-Za-z0-9_])",
 ]
+# Long opaque tokens (base64-ish keys): found by a linear scan, then judged in Python, never by lookahead tricks.
+_LONG_TOKEN = re.compile(r"(?<![A-Za-z0-9+/_\-])[A-Za-z0-9+/_\-]{48,}={0,2}")
+MAX_SCAN = 20_000  # everything stored is short; scan long inputs in bounded windows
+
+
+def _token_like(s: str) -> bool:
+    return any(c.isdigit() for c in s) and any(c.isupper() for c in s) and any(c.islower() for c in s)
+
+
+def _windows(text: str):
+    if len(text) <= MAX_SCAN:
+        yield text
+        return
+    step = MAX_SCAN - 256  # overlap so a secret straddling a boundary is still seen
+    for i in range(0, len(text), step):
+        yield text[i:i + MAX_SCAN]
 _PERSONAL_PATTERNS = [
-    (r"[\w.+\-]+@[\w\-]+\.[\w.\-]+", "<email>"),
+    (r"(?<![\w.+\-])[\w.+\-]+@[\w\-]+\.[\w.\-]+", "<email>"),
     (r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "<ip>"),
     (r"\+\d[\d\-\s().]{8,}\d", "<phone>"),
     (r"/home/[^/\s\"']+", "~"),
@@ -34,22 +51,28 @@ PERSONAL_RX = [(re.compile(p), r) for p, r in _PERSONAL_PATTERNS]
 
 
 def redact(text: str | None) -> str:
-    """Return text with secrets and personal identifiers replaced by placeholders."""
+    """Return text with secrets and personal identifiers replaced by placeholders (input beyond MAX_SCAN is dropped)."""
     if not text:
         return ""
-    out = text
+    out = text[:MAX_SCAN]
     for rx in SECRET_RX:
         out = rx.sub("<secret>", out)
+    out = _LONG_TOKEN.sub(lambda m: "<secret>" if _token_like(m.group(0)) else m.group(0), out)
     for rx, repl in PERSONAL_RX:
         out = rx.sub(repl, out)
     return out
 
 
 def has_secret(text: str | None) -> bool:
-    """True if text still contains something that looks like a credential (used by vigil)."""
+    """True if text still contains something that looks like a credential (used by vigil). Linear time on any input."""
     if not text:
         return False
-    return any(rx.search(text) for rx in SECRET_RX)
+    for w in _windows(text):
+        if any(rx.search(w) for rx in SECRET_RX):
+            return True
+        if any(_token_like(m.group(0)) for m in _LONG_TOKEN.finditer(w)):
+            return True
+    return False
 
 
 # ---- sensitivity -------------------------------------------------------------------------------

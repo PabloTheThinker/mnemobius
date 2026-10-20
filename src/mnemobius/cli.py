@@ -47,14 +47,21 @@ def install_plugin(hermes_home=None) -> int:
     return 0
 
 
+COUNT_SQL = {  # literal statements only: nothing is ever interpolated into SQL here
+    "episodes": "SELECT COUNT(*) FROM episodes", "atoms": "SELECT COUNT(*) FROM atoms", "patterns": "SELECT COUNT(*) FROM patterns",
+    "briefs": "SELECT COUNT(*) FROM briefs", "echoes": "SELECT COUNT(*) FROM echoes",
+    "scored": "SELECT COUNT(*) FROM echoes WHERE scored=1", "outcomes": "SELECT COUNT(*) FROM outcomes",
+}
+
+
 def cmd_status(conn, args):
-    q = lambda s: conn.execute(s).fetchone()[0]  # noqa: E731
-    print(f"episodes {q('select count(*) from episodes')}  atoms {q('select count(*) from atoms')}  patterns {q('select count(*) from patterns')}")
+    n = {k: conn.execute(sql).fetchone()[0] for k, sql in COUNT_SQL.items()}
+    print(f"episodes {n['episodes']}  atoms {n['atoms']}  patterns {n['patterns']}")
     for r in conn.execute("SELECT kind, tier, COUNT(*) n FROM concepts WHERE status='active' GROUP BY 1,2 ORDER BY 1,2"):
         print(f"  {r['kind']:11s}{r['tier']:9s}{r['n']}")
     print("edges:", ", ".join(f"{r['rel']}={r['n']}" for r in conn.execute("SELECT rel, COUNT(*) n FROM edges GROUP BY 1")) or "none")
     print("arms :", ", ".join(f"{k}={v:.2f}" for k, v in lens.arm_weights(conn).items()))
-    print(f"loop : briefs {q('select count(*) from briefs')}  echoes {q('select count(*) from echoes')} (scored {q('select count(*) from echoes where scored=1')})  outcomes {q('select count(*) from outcomes')}")
+    print(f"loop : briefs {n['briefs']}  echoes {n['echoes']} (scored {n['scored']})  outcomes {n['outcomes']}")
     print("vigil:", "clean" if vigil.audit(conn)["clean"] else "FINDINGS (run: mnemobius vigil)")
 
 
