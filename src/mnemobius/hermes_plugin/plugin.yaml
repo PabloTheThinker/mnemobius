@@ -1,0 +1,5 @@
+name: mnemobius
+version: "0.1.0"
+description: "Möbius memory core: briefs you with your own past patterns at task start, hints at known failures, and learns whether the advice helped."
+author: "Pablo Navarro"
+kind: standalone
