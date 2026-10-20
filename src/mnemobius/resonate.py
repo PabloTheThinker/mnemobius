@@ -173,7 +173,7 @@ def mine_motifs(conn, min_eps=10, lift_min=1.25, top=30):
         if lift >= lift_min:
             cands.append((len(es) * math.log(lift), gram, len(es), lift))
     cands.sort(reverse=True)
-    kept, chosen = [], []
+    chosen = []
     for score, gram, n, lift in cands:
         if any(len(c[1]) > len(gram) and _is_sub(gram, c[1]) and c[2] >= 0.8 * n for c in chosen):
             continue

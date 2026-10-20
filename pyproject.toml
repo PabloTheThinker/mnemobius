@@ -16,6 +16,11 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=7"]
 
+[project.urls]
+Homepage = "https://github.com/PabloTheThinker/mnemobius"
+Issues = "https://github.com/PabloTheThinker/mnemobius/issues"
+Security = "https://github.com/PabloTheThinker/mnemobius/security/policy"
+
 [project.scripts]
 mnemobius = "mnemobius.cli:main"
 
@@ -27,3 +32,7 @@ mnemobius = ["hermes_plugin/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff.lint]
+# Correctness plus the security rules that matter for a tool that builds SQL and reads private data.
+select = ["E9", "F", "B006", "B008", "B904", "S102", "S307", "S602", "S605", "S608"]
